@@ -1,0 +1,149 @@
+My data contains unescaped quotes within quoted fields or quote
+characters in unquoted field.
+
+libcsv handles such malformed data by default, no special configuration
+is required.  There are cases where such malformed data is ambigous and
+might not be parsed the way you would like, see the man page for libcsv
+for details.  The csvfix and csvtest programs in the example directory
+may be useful when trying to determine how libcsv will parse your data.
+The csvvalid program can also be used to check for malformed data files.
+
+
+
+My csv file contains comments that should not be parsed as csv data,
+how can I handle this?
+
+Although there is no direct support for comment handling in libcsv you
+can preprocess the data before sending it to libcsv.  For example, say
+that you wish to ignore all lines whose first non-space, non-tab
+character is a hash (#), you could use the following piece of code to
+accomplish that:
+
+#include <stdio.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include "csv.h"
+
+int in_comment, in_record;
+
+void cb1(void *d, char *s, size_t size) { /* Data processing here */ }
+void cb2(void *d, char c) { in_record = 0; /* Record handling here */ }
+
+int main (void) {
+  int c;
+  char ch;
+  struct csv_parser *p;
+  if (csv_init(&p, 0))
+    return EXIT_FAILURE;
+
+  while ((c = getchar()) != EOF) {
+    ch = c;
+    if (in_comment) {
+      if (ch == '\012' || ch == '\015') {
+        in_comment = 0;
+      }
+    } else if (!in_record) {
+      if (ch == ' ' || ch == '\t') {
+        ;
+      } else if (ch == '#') {
+        in_comment = 1;
+      } else {
+        in_record = 1;
+        csv_parse(p, &ch, 1, cb1, cb2);
+      }
+    } else {
+      csv_parse(p, &ch, 1, cb1, cb2);
+    }
+  }
+  csv_fini(p, ...);
+  return 0;
+}
+
+If you determine that calling csv_parse for each character takes too
+much overhead (do some tests before making this decision, it usually
+doesn't) you can optimize this by processing a larger number of
+characters and calling csv_parse on a larger resulting buffer.  
+If you know that your data is text-only, you can simplify this by
+reading one line at a time, checking the first non-space character,
+skipping the line if it is a comment character and calling csv_parse
+if it isn't.
+
+
+
+My data uses a semicolon as a delimiter instead of comma but otherwise
+follows CSV conventions, how can I use libcsv to read my data?
+
+Use the csv_set_delim function introduced in libcsv 2.0.0:
+struct csv_parser *p;
+csv_init(&p);
+csv_set_delim(p, ';');
+...
+
+You can use csv_set_delim to set the delimiter to any character.  Any
+field that contains the delimiter must be quoted when using strict
+mode.  Be careful not to set the delimiter to the same character used
+as the quote character, a space character or a line terminator
+character though as libcsv won't be able to determine if the character 
+is a field delimiter or a quote, etc.
+
+
+
+My data uses a single quotes instead of double quotes for quoted
+fields, how can I accomidate this?
+
+Use the csv_set_quote function introduced in libcsv 2.0.0:
+struct csv_parser *p;
+csv_init(&p);
+csv_set_quote(p, '\'');
+...
+
+As with csv_set_delim you can set the quote character to any character
+but fields containing the quote character must still be quoted and are
+expected to be escaped by an instance of itself.  For example, if you 
+use csv_set_quote to change the quote character to a single quote, 
+instances of a single quote in field data should be escaped by a 
+preceding single quote.
+
+
+
+How can I preserve leading and trailing whitespace from non-quoted 
+fields?
+
+By default libcsv ignores leading and trailing spaces and tabs from 
+non-quoted fields as this is the most common practice and expected by 
+many applications.  The csv_set_space_func function introduced in 
+libcsv 2.0.0 allows you to specify a function that will return 1 if 
+the provided character should be considered a space character and 0 
+otherwise.  This allows you to change the characters that libcsv 
+ignores around unquoted fields.  If you create a function that always 
+returns 0 then no character will be recognized as a space character 
+and all characters will be preserved:
+
+int my_space(char c) { return 0;}
+
+struct csv_parser *p;
+csv_init(&p);
+csv_set_space_func(p, my_space);
+...
+
+
+How can I remove leading and trailing whitespace from quoted fields?
+
+By default libcsv removes surrounding space and tab characters from 
+unquoted fields but not from quoted fields.  The easiest way to remove 
+unwanted characters from a quoted field is inside the field callback 
+function, simply take the data provided to the callback function and 
+perform any manipulations directly on it.
+
+
+
+I want to be able to do things like extract or search on specific 
+fields from a CSV file, sort a CSV file, etc. but the common UNIX 
+utilities (cut, grep, sort, etc.) don't work on CSV data that contains 
+fields with embedded commas or newlines, etc.  Are there any tools 
+like this for managing CSV files?
+
+Take a look at csvutils at http://sourceforge.net/projects/csvutils.
+This package uses libcsv to provide a number of useful CSV utilities 
+including csvcut, csvgrep, and others with option syntax resembling 
+their non-CSV counterparts.

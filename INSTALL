@@ -1,0 +1,42 @@
+[Installing on systems with make(1)]
+
+On systems with make, the installation process consists of:
+
+    ./configure
+    make
+    make check
+    make install
+
+You may need to run ldconfig or a similiar command before dynamically
+linking your program to libcsv.
+
+This will install the csv.h header, libcsv shared and static libraries,
+and the csv(3) manual page.  Run ./configure --help for other options.
+
+[Installing on systems without make]
+
+libcsv is written in pure ANSI C89 and does not have any prerequisites aside
+from a compiler and the Standard C library, it should compile on any
+conforming implementation.  Below are examples of how to compile this on gcc,
+see your compiler's documentation for other compilers.
+
+libcsv can be installed as a shared library on systems that support it:
+  gcc -shared libcsv.c -o libcsv.so
+
+or simply compiled into object code an linked into your program:
+  gcc libcsv.c -c -o libcsv.o
+  gcc myproject.c libcsv.o -o myproject
+
+you can also compile libcsv as a static library:
+  gcc libcsv.c -c -o libcsv.o
+  ar -rc libcsv.a libcsv.o
+  ar -s libcsv.a
+
+
+The examples can be compiled with gcc like this:
+  gcc csvinfo.c libcsv.o -o csvinfo
+
+or using a shared library like this:
+  gcc csvinfo.c -lcsv -o csvinfo
+
+

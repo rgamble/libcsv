@@ -1,0 +1,569 @@
+.TH CSV 3 "9 January 2013"
+.SH NAME
+csv \- CSV parser and writer library
+.SH SYNOPSIS
+.nf
+.ft B
+#include <libcsv/csv.h>
+.LP
+.fi
+.ft B
+int csv_init(struct csv_parser *\fIp\fB, unsigned char \fIoptions\fB);
+.nf
+.fi
+size_t csv_parse(struct csv_parser *\fIp\fB,
+.ti +8
+const void *\fIs\fB,
+.ti +8
+size_t \fIlen\fB,
+.ti +8
+void (*\fIcb1\fB)(void *, size_t, void *),
+.ti +8
+void (*\fIcb2\fB)(int, void *),
+.ti +8
+void *\fIdata\fB);
+.nf
+.fi
+int csv_fini(struct csv_parser *\fIp\fB,
+.ti +8
+void (*\fIcb1\fB)(void *, size_t, void *),
+.ti +8
+void (*\fIcb2\fB)(int, void *),
+.ti +8
+void *\fIdata\fB);
+.nf
+void csv_free(struct csv_parser *\fIp\fB);
+
+unsigned char csv_get_delim(struct csv_parser *\fIp\fB);
+unsigned char csv_get_quote(struct csv_parser *\fIp\fB);
+void csv_set_space_func(struct csv_parser *\fIp\fB, int (*\fIf\fB)(unsigned char));
+void csv_set_term_func(struct csv_parser *\fIp\fB, int (*\fIf\fB)(unsigned char));
+
+int csv_get_opts(struct csv_parser *\fIp\fB);
+int csv_set_opts(struct csv_parser *\fIp\fB, unsigned char \fIoptions\fB);
+int csv_error(struct csv_parser *\fIp\fB);
+char * csv_strerror(int \fIerror\fB);
+
+size_t csv_write(void *\fIdest\fB, size_t \fIdest_size\fB, const void *\fIsrc\fB,
+.ti +8
+size_t \fIsrc_size\fB);
+int csv_fwrite(FILE *\fIfp\fB, const void *\fIsrc\fB, size_t \fIsrc_size\fB);
+
+size_t csv_write2(void *\fIdest\fB, size_t \fIdest_size\fB, const void *\fIsrc\fB,
+.ti +8
+size_t \fIsrc_size\fB, unsigned char \fIquote\fB);
+int csv_fwrite2(FILE *\fIfp\fB, const void *\fIsrc\fB, size_t \fIsrc_size\fB, unsigned char \fIquote\fB);
+
+void csv_set_realloc_func(struct csv_parser *\fIp\fB, void *(*\fIfunc\fB)(void *, size_t));
+void csv_set_free_func(struct csv_parser *\fIp\fB, void (*\fIfunc\fB)(void *));
+void csv_set_blk_size(struct csv_parser *\fIp\fB, size_t \fIsize\fB);
+size_t csv_get_blk_size(struct csv_parser *\fIp\fB);
+size_t csv_get_buffer_size(struct csv_parser *\fIp\fB);
+
+.SH DESCRIPTION
+.ft
+.ft
+.fi
+The CSV library provides a flexible, intuitive interface for parsing and writing 
+csv data. 
+
+.SH OVERVIEW
+
+The idea behind parsing with \fBlibcsv\fP is straight-forward: you initialize a parser object with
+\fBcsv_init()\fP and feed data to the parser over one or more calls to
+\fBcsv_parse()\fP providing callback functions that handle end-of-field and
+end-of-row events.  \fBcsv_parse()\fP parses the data provided calling the
+user-defined callback functions as it reads fields and rows.
+When complete, \fBcsv_fini()\fP is called to finish processing the current
+field and make a final call to the callback functions if neccessary.
+\fBcsv_free()\fP is then called to free the parser object.
+\fBcsv_error()\fP and \fBcsv_strerror()\fP provide information about errors
+encountered by the functions.
+\fBcsv_write()\fP and \fBcsv_fwrite()\fP provide a simple interface for
+converting raw data into CSV data and storing the result into a buffer or
+file respectively.
+
+CSV is a binary format allowing the storage of arbitrary binary data, files
+opened for reading or writing CSV data should be opened in binary mode.
+
+\fBlibcsv\fP provides a default mode in which the parser will happily 
+process any data as CSV without complaint, this is useful for parsing files
+which don't adhere to all the traditional rules. A strict mode is also supported
+which will cause any violation of the imposed rules to cause a parsing failure.
+
+.SH ROUTINES
+.ti -4
+PARSING DATA
+.br
+.B csv_init()
+initializes a pointer to a \fBcsv_parser\fP structure.
+This structure contains housekeeping information
+such as the current state of the parser,
+the buffer, current size and position, etc.
+The \fBcsv_init()\fP function returns 0 on success and a non-zero value
+upon failure.  \fBcsv_init()\fP will fail if the pointer passed to it is
+a null pointer.  The \fIoptions\fP argument specifies the
+parser options, these may be changed later with the \fBcsv_set_opts()\fP
+function. 
+.PP
+\fIOPTIONS\fP
+.RS
+.TP
+\fBCSV_STRICT\fP
+Enables strict mode.
+.TP
+\fBCSV_REPALL_NL\fP
+Causes each instance of a carriage return or linefeed outside of a record to be reported.
+.TP
+\fBCSV_STRICT_FINI\fP
+Causes unterminated quoted fields encountered in \fBcsv_fini()\fP to cause a parsing error (see below).
+.TP
+\fBCSV_APPEND_NULL\fP
+Will cause all fields to be nul-terminated when provided to \fIcb1\fP, introduced in 3.0.0.
+.TP
+\fBCSV_EMPTY_IS_NULL\fP
+Will cause NULL to be passed as the first argument to \fIcb1\fP for empty, unquoted, fields.  Empty means consisting only of either spaces and tabs or the values defined by the a custom function registered via \fBcsv_set_space_func()\fP.  Added in 3.0.3.
+.PP
+.RE
+Multiple options can be specified by OR-ing them together.
+.PP
+\fBcsv_parse()\fP is the function that does the actual parsing, it takes
+6 arguments:
+.RS
+.TP
+\fIp\fP is a pointer to an initialized \fBstruct csv_parser\fP.
+.TP
+\fIs\fP is a pointer to the data to read in, such as a dynamically allocated region of memory containing data read in from a call to \fBfread()\fP.
+.TP
+\fIlen\fP is the number of bytes of data to process.
+.TP
+\fIcb1\fP is a pointer to the callback function that will be called from \fBcsv_parse()\fP after an entire field has been read. \fIcb1\fP will be called with a pointer to the parsed data (which is NOT nul-terminated unless the CSV_APPEND_NULL option is set), the number of bytes in the data, and the pointer that was passed to \fBcsv_parse()\fP.
+.TP
+\fIcb2\fP is a pointer to the callback function that will be called when the end of a record is encountered, it will be called with the character that caused the record to end, cast to an unsigned char, or -1 if called from csv_fini, and the pointer that was passed to \fBcsv_init()\fP.
+.TP
+\fIdata\fP is a pointer to user-defined data that will be passed to the callback functions when invoked.
+.TP
+\fIcb1\fP and/or \fIcb2\fP may be \fBNULL\fP in which case no function will be called for the associated actions.  \fIdata\fP may also be \fBNULL\fP but the callback functions must be prepared to handle receiving a null pointer.
+.RE
+
+By default \fIcb2\fP is not called when rows that do not contain any fields
+are encountered.  This behavior is meant to accomodate files using
+only either a linefeed or a carriage return as a record seperator to
+be parsed properly while at the same time being able to parse files with rows
+terminated by multiple characters from resulting in blank rows after
+each actual row of data (for example, processing a text CSV file
+created that was created on a Windows machine on a Unix machine).
+The \fBCSV_REPALL_NL\fP option will cause \fBcb2\fP to be called
+once for every carraige return or linefeed encountered outside of a field.  
+\fIcb2\fP is called with the character that prompted the call to the function,
+, cast to an unsigned char, either \fBCSV_CR\fP for carriage return, \fBCSV_LF\fP for linefeed, or \fB-1\fP
+for record termination from a call to \fBcsv_fini()\fP (see below).
+A carriage return or linefeed within a non-quoted field always
+marks both the end of the field and the row.  Other characters can be used as row terminators and thus be provided as
+an argument to \fIcb2\fP using \fBcsv_set_space_func()\fP.
+.PP
+.B Note: 
+The first parameter of the \fIcb1\fP function is \fBvoid *\fP, not 
+\fBconst void *\fP; the pointer passed to the callback function is
+actually a pointer to the entry buffer inside the \fBcsv_parser struct\fP,
+this data may safely be modified from the callback function (or any
+function that the callback function calls) but you must not attempt
+to access more than \fIlen\fP bytes and you should not access the data
+after the callback function returns as the buffer is dynamically
+allocated and its location and size may change during calls to \fBcsv_parse()\fP.
+.PP
+\fBNote:\fP Different callback functions may safely be specified during each
+call to \fBcsv_parse()\fP but keep in mind that the callback 
+functions may be called many times during a single call to \fBcsv_parse()\fP
+depending on the amount of data being processed in a given call.
+.PP
+\fBcsv_parse()\fP returns the number of bytes processed, on a successful
+call this will be \fIlen\fP, if it is less than len an error has occured.
+An error can occur, for example, if there is insufficient memory
+to store the contents of the current field in the entry buffer.
+An error can also occur if malformed data is encountered while running
+in strict mode.
+.PP
+The \fBcsv_error()\fP function can be used to determine what the error is and
+the \fBcsv_strerror()\fP function can be used to provide a textual description
+of the error. \fBcsv_error()\fP takes a single argument, a pointer to a
+\fBstruct csv_parser\fP, and returns one of the following values defined in
+\fBcsv.h\fP:
+.PP
+.RS
+.TP
+\fBCSV_EPARSE\fP\ \ \ A parse error has occured while in strict mode
+.TP
+\fBCSV_ENOMEM\fP\ \ \ There was not enough memory while attempting to increase the entry buffer for the current field
+.TP
+\fBCSV_ETOOBIG\fP\ \ Continuing to process the current field would require a buffer of more than SIZE_MAX bytes
+.RE
+.PP
+The value passed to \fBcsv_strerror()\fP should be one returned from
+\fBcsv_error()\fP.  The return value of \fBcsv_strerror()\fP is a pointer to a
+static string. The pointer may be used for the entire
+lifetime of the program and the contents will not change during
+execution but you must not attempt to modify the string it points to.
+.PP
+When you have finished submitting data to \fBcsv_parse()\fP, you need
+to call the \fBcsv_fini()\fP function.  This function will call the \fIcb1\fP
+function with any remaining data in the entry buffer (if there is
+any) and call the \fIcb2\fP function unless we are already at the end of a row
+(the last byte processed was a newline character for example).
+It is neccessary to call this function because the file being
+processed might not end with a carriage return or newline but the
+data that has been read in to this point still needs to be 
+submitted to the callback routines.
+If \fIcb2\fP is called from within \fBcsv_fini()\fP it will be because the row was
+not terminated with a newline sequence, in this case \fIcb2\fP will be
+called with an argument of -1.
+
+\fBNote:\fP A call to \fBcsv_fini\fP implicitly ends the field current field
+and row.  If the last field processed is a quoted field that ends before a
+closing quote is encountered, no error will be reported by default, even if
+CSV_STRICT is specified.  To cause \fBcsv_fini()\fP to report an error in such a
+case, set the CSV_STRICT_FINI option (new in version 1.0.1) in addition to
+the CSV_STRICT option.
+
+\fBcsv_fini()\fP also reinitializes the parser state so that it is ready to
+be used on the next file or set of data.  \fBcsv_fini()\fP does not alter
+the current buffer size. If the last set of data that was being parsed
+contained a very large field that increased the size of the buffer,
+and you need to free that memory before continuing, you must call
+\fBcsv_free()\fP, you do not need to call \fBcsv_init()\fP again after \fBcsv_free()\fP.
+Like csv_parse, the callback
+functions provided to \fBcsv_fini()\fP may be NULL.  \fBcsv_fini()\fP returns 0
+on success and a non-zero value if you pass it a null pointer.
+
+After calling \fBcsv_fini()\fP you may continue to use the same struct
+csv_parser pointer without reinitializing it (in fact you must not call
+\fBcsv_init()\fP with an initialized csv_parser object or the memory
+allocated for the original structure will be lost).
+
+When you are finished using the csv_parser object you can free any
+dynamically allocated memory associated with it by calling \fBcsv_free()\fP.
+You may call \fBcsv_free()\fP at any time, it need not be preceded by a call
+to \fBcsv_fini()\fP.  You must only call \fBcsv_free()\fP on a csv_parser object
+that has been initialized with a successful call to \fBcsv_init()\fP.
+
+.ti -4
+WRITING DATA
+.br
+\fBlibcsv\fP provides two functions to transform raw data into CSV formatted data: the
+\fBcsv_write()\fP function which writes the result to a provided buffer, and
+the \fBcsv_fwrite()\fP function which writes the result to a file.
+The functionality of both functions is straight-forward, they write
+out a single field including the opening and closing quotes and
+escape each encountered quote with another quote.
+
+The \fBcsv_write()\fP function takes a pointer to a source buffer (\fIsrc\fP)
+and processes at most \fIsrc_size\fP characters from \fIsrc\fP.
+\fBcsv_write()\fP will write at most \fIdest_size\fP characters to \fIdest\fP
+and returns the number of characters that would have been written if \fIdest\fP
+was large enough.  This can be used to determine if all the characters
+were written and, if not, how large \fIdest\fP needs to be to write out all of
+the data.
+\fBcsv_write()\fP may be called with a null pointer for the \fIdest\fP argument
+in which case no data is written but the size required to write
+out the data will be returned.  The space needed to write out the
+data is the size of the data + number of quotes appearing in data
+(each one will be escaped) + 2 (the leading and terminating quotes).
+\fIcsv_write()\fP and \fIcsv_fwrite()\fP always surround the output data with
+quotes.
+If \fIsrc_size\fP is very large (SIZE_MAX/2 or greater) it is possible that
+the number of bytes needed to represent the data, after inserting
+escaping quotes, will be greater than SIZE_MAX.  In such a case,
+csv_write will return SIZE_MAX which should be interpreted as meaning
+the data is too large to write to a single field.  The \fBcsv_fwrite()\fP
+function is not similiarly limited.
+
+\fBcsv_fwrite()\fP takes a FILE pointer (which should have been opened in
+binary mode) and converts and writes the data pointed to by \fIsrc\fP
+of size \fIsrc_size\fP.  It returns \fB0\fP on success and \fBEOF\fP if
+there was an error writing to the file.
+\fBcsv_fwrite()\fP doesn't provide the number of
+characters processed or written.  If this functionality is required,
+use the \fBcsv_write()\fP function combined with \fBfwrite()\fP.
+
+\fBcsv_write2()\fP and \fBcsv_fwrite2()\fP work similiarly but take an
+additional argument, the quote character to use when composing the field.
+
+.ti -4
+CUSTOMIZING THE PARSER
+.br
+The \fBcsv_set_delim()\fP and \fBcsv_set_quote()\fP functions provide a
+means to change the characters that the parser will consider the delimiter
+and quote characters respetively, cast to unsigned char.  \fBcsv_get_delim()\fP  and \fBcsv_get_delim()\fP
+return the current delimiter and quote characters respectively.  When
+\fBcsv_init()\fP is called the delimiter is set to \fBCSV_COMMA\fP and the quote
+to \fBCSV_QUOTE\fP.  Note that the rest of the CSV conventions still apply
+when these functions are used to change the delimiter and/or quote characters,
+fields containing the new quote character or delimiter must be quoted and quote
+characters must be escaped with an immediately preceeding instance of the same
+character.
+Additionally, the \fBcsv_set_space_func()\fP and \fBcsv_set_term_func()\fP
+allow a user-defined function to be provided which will be used determine
+what constitutes a space character and what constitutes a record terminator
+character.  The space characters determine which characters are removed from
+the beginning and end of non-quoted fields and the terminator characters
+govern when a record ends.  When \fBcsv_init()\fP is called, the effect is
+as if these functions were each called with a NULL argument in which case
+no function is called and CSV_SPACE and CSV_TAB are used for space characters,
+and CSV_CR and CSV_LF are used for terminator characters.
+
+\fBcsv_set_realloc_func()\fP can be used to set the function that is called
+when the internal buffer needs to be resized, only realloc, not malloc, is used 
+internally; the default is to use the standard realloc function.
+Likewise, \fBcsv_set_free_func()\fP is used to set the function called to free
+the internal buffer, the default is the standard free function.
+
+\fBcsv_get_blk_size()\fP and \fBcsv_set_blk_size()\fP can be used to get and set
+the block size of the parser respectively.  The block size if the amount of 
+extra memory allocated every time the internal buffer needs to be increased,
+the default is 128.  \fBcsv_get_buffer_size()\fP will return the current
+number of bytes allocated for the internal buffer.
+
+.PP 
+.SH THE CSV FORMAT
+Although quite prevelant there is no standard for
+the CSV format.  There are however, a set of traditional conventions used by
+many applications.  \fBlibcsv\fP follows the conventions described at
+http://www.creativyst.com/Doc/Articles/CSV/CSV01.htm which seem to
+reflect the most common usage of the format, namely:
+.PP
+.RS
+.TP
+Fields are seperated with commas.
+.TP
+Rows are delimited by newline sequences (see below).
+.TP
+Fields may be surrounded with quotes.
+.TP
+Fields that contain comma, quote, or newline characters MUST be quoted.  
+.TP
+Each instance of a quote character must be escaped with an immediately preceding quote character.
+.TP
+Leading and trailing spaces and tabs are removed from non-quoted fields.
+.TP
+The final line need not contain a newline sequence.
+.RE
+.PP
+In strict mode, any detectable violation of these rules results in an error.
+.PP
+RFC 4180 is an informational memo which attempts to document the
+CSV format, especially with regards to its use as a MIME type.
+There are a several parts of the description documented in this memo
+which either do not accurately reflect widely used conventions or
+artificially limit the usefulness of the format.  The differences
+between the RFC and \fBlibcsv\fP are:
+.PP
+.RS
+.TP
+"Each line should contain the same number of fields throughout the file"
+\fBlibcsv\fP doesn't care if every record contains a different number of fields, such a restriction could easily be enforced by the application itself if desired.
+.TP
+"Spaces are considered part of a field and should not be ignored"
+Leading and trailing spaces that are part of non-quoted fields are ignored as this is by far the most common behavior and expected by many applications.
+
+\fBabc ,  def\fP
+
+is considered equivalent to:
+
+\fB"abc", "def"\fP
+.TP
+"The last field in the record must not be followed by a comma"
+The meaning of this statement is not clear but if the last character
+of a record is a comma, \fBlibcsv\fP will interpret that as a final empty
+field, i.e.:
+
+\fB"abc", "def",\fP
+
+will be interpreted as 3 fields, equivalent to:
+
+\fB"abc", "def", ""\fP
+.PP
+RFC 4180 limits the allowable characters in a CSV field, \fBlibcsv\fP
+allows any character to be present in a field provided it adheres
+to the conventions mentioned above.  This makes it possible to
+store binary data in CSV format, an attribute that many application rely on.
+.PP
+RFC 4180 states that a Carriage Return plus Linefeed combination is
+used to delimit records, \fBlibcsv\fP allows any combination of Carriage
+Returns and Linefeeds to signify the end of a record.  This is to
+increase portability among systems that use different combinations
+to denote a newline sequence.
+.PP
+.SH PARSING MALFORMED DATA
+\fBlibcsv\fP should correctly parse any CSV data that conforms to the rules
+discussed above.  By default, however, \fBlibcsv\fP will also attempt to
+parse malformed CSV data such as data containing unescaped quotes
+or quotes within non-quoted fields.  For example:
+.nf
+
+\fBa"c, "d"f"\fP
+
+would be parsed equivalently to the correct form:
+
+\fB"a""c", "d""f"\fP
+
+.fi
+This is often desirable as there are some applications that do
+not adhere to the specifications previously discussed.  However,
+there are instances where malformed CSV data is ambigious, namely
+when a comma or newline is the next non-space character following
+a quote such as:
+.nf
+
+\fB"Sally said "Hello", Wally said "Goodbye""\fP
+
+This could either be parsed as a single field containing the data:
+
+\fBSally said "Hello", Wally said "Goodbye"\fP
+
+or as 2 seperate fields:
+
+.fi
+\fBSally said "Hello\fP
+and
+\fBWally said "Goodbye""\fP
+
+Since the data is malformed, there is no way to know if the quote
+before the comma is meant to be a literal quote or if it signifies
+the end of the field.  This is of course not an issue for properly
+formed data as all quotes must be escaped.  \fBlibcsv\fP will parse this
+example as 2 seperate fields.
+
+\fBlibcsv\fP provides a strict mode that will return with a parse error
+if a quote is seen inside a non-quoted field or if a non-escaped
+quote is seen whose next non-space character isn't a comma or
+newline sequence.
+
+.PP
+.SH PARSER DETAILS
+
+A field is considered quoted if the first non-space character for a
+new field is a quote.
+
+If a quote is encountered in a quoted field and the next non-space
+character is a comma, the field ends at the closed quote and the
+field data is submitted when the comma is encountered.  If the next
+non-space character after a quote is a newline character, the row
+has ended and the field data is submitted and the end of row is
+signalled (via the appropriate callback function).  If two quotes
+are immediately adjacent, the first one is interpreted as escaping
+the second one and one quote is written to the field buffer.  If the
+next non-space character following a quote is anything else, the
+quote is interpreted as a non-escaped literal quote and it and what
+follows are written to the field buffer, this would cause a parse
+error in strict mode.
+
+.nf
+Example 1
+\fB"abc"""\fP
+Parses as: \fBabc"\fP
+.fi
+The first quote marks the field as quoted, the second quote escapes
+the following quote and the last quote ends the field.  This is
+valid in both strict and non-strict modes.
+
+.nf
+Example 2
+\fB"ab"c\fP
+Parses as: \fBab"c\fP
+.fi
+The first qute marks the field as quoted, the second quote is taken
+as a literal quote since the next non-space character is not a
+comma, or newline and the quote is not escaped.  The last quote ends
+the field (assuming there is a newline character following).
+A parse error would result upon seeing the character c in strict
+mode.
+
+.nf
+Example 3
+\fB"abc" "\fP
+Parses as: \fBabc"\fP
+.fi
+In this case, since the next non-space character following the second
+quote is not a comma or newline character, a literal quote is
+written, the space character after is part of the field, and the last
+quote terminated the field.  This demonstrates the fact that a quote
+must immediately precede another quote to escape it.  This would be a
+strict-mode violation as all quotes are required to be escaped.
+.PP
+If the field is not quoted, any quote character is taken as part of
+the field data, any comma terminated the field, and any newline
+character terminated the field and the record.
+
+.nf
+Example 4
+\fBab""c\fP
+Parses as: \fBab""c\fP
+.fi
+Quotes are not considered special in non-quoted fields.  This would
+be a strict mode violation since quotes may not exist in non-quoted
+fields in strict mode.
+
+.SH EXAMPLES
+The following example prints the number of fields and rows in a file.
+This is a simplified version of the csvinfo program provided in the 
+examples directory.  Error checking not related to \fBlibcsv\fP has been removed
+for clarity, the csvinfo program also provides an option for enabling strict
+mode and handles multiple files.
+.nf
+.PP
+.RS
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
+#include "libcsv/csv.h"
+
+struct counts {
+  long unsigned fields;
+  long unsigned rows;
+};
+
+void cb1 (void *s, size_t len, void *data) {
+  ((struct counts *)data)->fields++; }
+void cb2 (int c, void *data) {
+  ((struct counts *)data)->rows++; }
+
+int main (int argc, char *argv[]) {
+  FILE *fp;
+  struct csv_parser p;
+  char buf[1024];
+  size_t bytes_read;
+  struct counts c = {0, 0};
+
+  if (csv_init(&p, 0) != 0) exit(EXIT_FAILURE);
+  fp = fopen(argv[1], "rb");
+  if (!fp) exit(EXIT_FAILURE);
+
+  while ((bytes_read=fread(buf, 1, 1024, fp)) > 0)
+    if (csv_parse(&p, buf, bytes_read, cb1, cb2, &c) != bytes_read) {
+      fprintf(stderr, "Error while parsing file: %s\\n",
+      csv_strerror(csv_error(&p)) );
+      exit(EXIT_FAILURE);
+    }
+
+  csv_fini(&p, cb1, cb2, &c);
+
+  fclose(fp);
+  printf("%lu fields, %lu rows\\n", c.fields, c.rows);
+
+  csv_free(&p);
+  exit(EXIT_SUCCESS);
+}
+.PP
+.RE
+.fi
+See the examples directory for several complete example programs.
+
+.SH AUTHOR
+Written by Robert Gamble.
+
+.SH BUGS
+Please send questions, comments, bugs, etc. to:
+.PP
+.ti +8
+rgamble@users.sourceforge.net
