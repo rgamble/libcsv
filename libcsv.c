@@ -17,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#if ___STDC_VERSION__ >= 199901L
+#if __STDC_VERSION__ >= 199901L
 #  include <stdint.h>
 #else
 #  define SIZE_MAX ((size_t)-1) /* C89 doesn't have stdint.h or SIZE_MAX */
@@ -177,13 +177,14 @@ csv_fini(struct csv_parser *p, void (*cb1)(void *, size_t, void *), void (*cb2)(
   switch (p->pstate) {
     case FIELD_MIGHT_HAVE_ENDED:
       p->entry_pos -= p->spaces + 1;  /* get rid of spaces and original quote */
-      /* Fall-through */
+      /*lint -fallthrough */
     case FIELD_NOT_BEGUN:
     case FIELD_BEGUN:
       quoted = p->quoted, pstate = p->pstate;
       spaces = p->spaces, entry_pos = p->entry_pos;
       SUBMIT_FIELD(p);
       SUBMIT_ROW(p, -1);
+      break;
     case ROW_NOT_BEGUN: /* Already ended properly */
       ;
   }
