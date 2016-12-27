@@ -143,7 +143,7 @@ utilities (cut, grep, sort, etc.) don't work on CSV data that contains
 fields with embedded commas or newlines, etc.  Are there any tools 
 like this for managing CSV files?
 
-Take a look at csvutils at http://sourceforge.net/projects/csvutils.
+Take a look at csvutils at https://github.com/rgamble/csvutils.
 This package uses libcsv to provide a number of useful CSV utilities 
 including csvcut, csvgrep, and others with option syntax resembling 
 their non-CSV counterparts.
