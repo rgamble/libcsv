@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libcsv.la
      libcsv_la_SOURCES = libcsv.c
-     libcsv_la_LDFLAGS = -version-info 3:2:0
+     libcsv_la_LDFLAGS = -version-info 3:3:0
      libcsv_la_CFLAGS = -Wall -Wextra 
 libcsv_includedir = $(includedir)
 nobase_libcsv_include_HEADERS = csv.h
