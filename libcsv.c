@@ -452,67 +452,13 @@ csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, s
 size_t
 csv_write (void *dest, size_t dest_size, const void *src, size_t src_size)
 {
-  unsigned char *cdest = dest;
-  const unsigned char *csrc = src;
-  size_t chars = 0;
-
-  if (src == NULL)
-    return 0;
-
-  if (cdest == NULL)
-    dest_size = 0;
-
-  if (dest_size > 0)
-    *cdest++ = '"';
-  chars++;
-
-  while (src_size) {
-    if (*csrc == '"') {
-      if (dest_size > chars)
-        *cdest++ = '"';
-      if (chars < SIZE_MAX) chars++;
-    }
-    if (dest_size > chars)
-      *cdest++ = *csrc;
-    if (chars < SIZE_MAX) chars++;
-    src_size--;
-    csrc++;
-  }
-
-  if (dest_size > chars)
-    *cdest = '"';
-  if (chars < SIZE_MAX) chars++;
-
-  return chars;
+  return csv_write2(dest, dest_size, src, src_size, CSV_QUOTE);
 }
 
 int
 csv_fwrite (FILE *fp, const void *src, size_t src_size)
 {
-  const unsigned char *csrc = src;
-
-  if (fp == NULL || src == NULL)
-    return 0;
-
-  if (fputc('"', fp) == EOF)
-    return EOF;
-
-  while (src_size) {
-    if (*csrc == '"') {
-      if (fputc('"', fp) == EOF)
-        return EOF;
-    }
-    if (fputc(*csrc, fp) == EOF)
-      return EOF;
-    src_size--;
-    csrc++;
-  }
-
-  if (fputc('"', fp) == EOF) {
-    return EOF;
-  }
-
-  return 0;
+  return csv_fwrite2(fp, src, src_size, CSV_QUOTE);
 }
 
 size_t

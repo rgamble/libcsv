@@ -1,5 +1,5 @@
-AC_INIT([libcsv], [3.0.3], [rgamble@users.sourceforge.net],
-        [libcsv], [http://sourceforge.net/projects/libcsv/])
+AC_INIT([libcsv], [3.0.3], [rgamble99@gmail.com],
+        [libcsv], [https://github.com/rgamble/libcsv])
 AC_PREREQ([2.65])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CC
