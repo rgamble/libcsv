@@ -357,11 +357,11 @@ csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, s
         } else if (is_term ? is_term(c) : c == CSV_CR || c == CSV_LF) { /* Carriage Return or Line Feed */
           if (pstate == FIELD_NOT_BEGUN) {
             SUBMIT_FIELD(p);
-            SUBMIT_ROW(p, (unsigned char)c); 
+            SUBMIT_ROW(p, c); 
           } else {  /* ROW_NOT_BEGUN */
             /* Don't submit empty rows by default */
             if (p->options & CSV_REPALL_NL) {
-              SUBMIT_ROW(p, (unsigned char)c);
+              SUBMIT_ROW(p, c);
             }
           }
           continue;
@@ -401,7 +401,7 @@ csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, s
         } else if (is_term ? is_term(c) : c == CSV_CR || c == CSV_LF) {  /* Carriage Return or Line Feed */
           if (!quoted) {
             SUBMIT_FIELD(p);
-            SUBMIT_ROW(p, (unsigned char)c);
+            SUBMIT_ROW(p, c);
           } else {
             SUBMIT_CHAR(p, c);
           }
@@ -421,7 +421,7 @@ csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, s
         } else if (is_term ? is_term(c) : c == CSV_CR || c == CSV_LF) {  /* Carriage Return or Line Feed */
           entry_pos -= spaces + 1;  /* get rid of spaces and original quote */
           SUBMIT_FIELD(p);
-          SUBMIT_ROW(p, (unsigned char)c);
+          SUBMIT_ROW(p, c);
         } else if (is_space ? is_space(c) : c == CSV_SPACE || c == CSV_TAB) {  /* Space or Tab */
           SUBMIT_CHAR(p, c);
           spaces++;
