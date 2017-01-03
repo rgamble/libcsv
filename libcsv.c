@@ -68,20 +68,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define SUBMIT_CHAR(p, c) ((p)->entry_buf[entry_pos++] = (c))
 
-static char *csv_errors[] = {"success",
+static const char *csv_errors[] = {"success",
                              "error parsing data while strict checking enabled",
                              "memory exhausted while increasing buffer size",
                              "data size too large",
                              "invalid status code"};
 
 int
-csv_error(struct csv_parser *p)
+csv_error(const struct csv_parser *p)
 {
   /* Return the current status of the parser */
-  return p->status;
+  if (p) return p->status;
+  return -1;
 }
 
-char *
+const char *
 csv_strerror(int status)
 {
   /* Return a textual description of status */
@@ -92,7 +93,7 @@ csv_strerror(int status)
 }
 
 int
-csv_get_opts(struct csv_parser *p)
+csv_get_opts(const struct csv_parser *p)
 {
   /* Return the currently set options of parser */
   if (p == NULL)
@@ -146,7 +147,7 @@ csv_free(struct csv_parser *p)
   if (p == NULL)
     return;
 
-  if (p->entry_buf)
+  if (p->entry_buf && p->free_func)
     p->free_func(p->entry_buf);
 
   p->entry_buf = NULL;
@@ -158,30 +159,32 @@ csv_free(struct csv_parser *p)
 int
 csv_fini(struct csv_parser *p, void (*cb1)(void *, size_t, void *), void (*cb2)(int c, void *), void *data)
 {
+  if (p == NULL)
+    return -1;
+
   /* Finalize parsing.  Needed, for example, when file does not end in a newline */
   int quoted = p->quoted;
   int pstate = p->pstate;
   size_t spaces = p->spaces;
   size_t entry_pos = p->entry_pos;
 
-  if (p == NULL)
-    return -1;
-
-
-  if (p->pstate == FIELD_BEGUN && p->quoted && p->options & CSV_STRICT && p->options & CSV_STRICT_FINI) {
+  if ((pstate == FIELD_BEGUN) && p->quoted && (p->options & CSV_STRICT) && (p->options & CSV_STRICT_FINI)) {
     /* Current field is quoted, no end-quote was seen, and CSV_STRICT_FINI is set */
     p->status = CSV_EPARSE;
     return -1;
   }
 
-  switch (p->pstate) {
+  switch (pstate) {
     case FIELD_MIGHT_HAVE_ENDED:
       p->entry_pos -= p->spaces + 1;  /* get rid of spaces and original quote */
+      entry_pos = p->entry_pos;
       /*lint -fallthrough */
     case FIELD_NOT_BEGUN:
     case FIELD_BEGUN:
+      /* Unnecessary:
       quoted = p->quoted, pstate = p->pstate;
       spaces = p->spaces, entry_pos = p->entry_pos;
+      */
       SUBMIT_FIELD(p);
       SUBMIT_ROW(p, -1);
       break;
@@ -211,17 +214,19 @@ csv_set_quote(struct csv_parser *p, unsigned char c)
 }
 
 unsigned char
-csv_get_delim(struct csv_parser *p)
+csv_get_delim(const struct csv_parser *p)
 {
   /* Get the delimiter */
-  return p->delim_char;
+  if (p) return p->delim_char;
+  return '\0';
 }
 
 unsigned char
-csv_get_quote(struct csv_parser *p)
+csv_get_quote(const struct csv_parser *p)
 {
   /* Get the quote character */
-  return p->quote_char;
+  if (p) return p->quote_char;
+  return '\0';
 }
 
 void
@@ -260,7 +265,7 @@ csv_set_blk_size(struct csv_parser *p, size_t size)
 }
 
 size_t
-csv_get_buffer_size(struct csv_parser *p)
+csv_get_buffer_size(const struct csv_parser *p)
 {
   /* Get the size of the entry buffer */
   if (p)
@@ -271,6 +276,9 @@ csv_get_buffer_size(struct csv_parser *p)
 static int
 csv_increase_buffer(struct csv_parser *p)
 {
+  if (p == NULL) return 0;
+  if (p->realloc_func == NULL) return 0;
+  
   /* Increase the size of the entry buffer.  Attempt to increase size by 
    * p->blk_size, if this is larger than SIZE_MAX try to increase current
    * buffer size to SIZE_MAX.  If allocation fails, try to allocate halve 
@@ -305,6 +313,8 @@ csv_increase_buffer(struct csv_parser *p)
 size_t
 csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, size_t, void *), void (*cb2)(int c, void *), void *data)
 {
+  if ((p == NULL) || (s == NULL)) return 0;
+   
   unsigned const char *us = s;  /* Access input data as array of unsigned char */
   unsigned char c;              /* The character we are currently processing */
   size_t pos = 0;               /* The number of characters we have processed in this call */
