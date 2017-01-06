@@ -77,9 +77,10 @@ static const char *csv_errors[] = {"success",
 int
 csv_error(const struct csv_parser *p)
 {
+  assert(p != NULL);
+
   /* Return the current status of the parser */
-  if (p) return p->status;
-  return -1;
+  return p->status;
 }
 
 const char *
@@ -216,17 +217,19 @@ csv_set_quote(struct csv_parser *p, unsigned char c)
 unsigned char
 csv_get_delim(const struct csv_parser *p)
 {
+  assert(p != NULL);
+
   /* Get the delimiter */
-  if (p) return p->delim_char;
-  return '\0';
+  return p->delim_char;
 }
 
 unsigned char
 csv_get_quote(const struct csv_parser *p)
 {
+  assert(p != NULL);
+
   /* Get the quote character */
-  if (p) return p->quote_char;
-  return '\0';
+  return p->quote_char;
 }
 
 void
@@ -313,8 +316,10 @@ csv_increase_buffer(struct csv_parser *p)
 size_t
 csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, size_t, void *), void (*cb2)(int c, void *), void *data)
 {
-  if ((p == NULL) || (s == NULL)) return 0;
-   
+  assert(p != NULL);
+
+  if (s == NULL) return 0;
+  
   unsigned const char *us = s;  /* Access input data as array of unsigned char */
   unsigned char c;              /* The character we are currently processing */
   size_t pos = 0;               /* The number of characters we have processed in this call */
