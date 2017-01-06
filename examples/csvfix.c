@@ -7,7 +7,7 @@ csvfix - reads (possibly malformed) CSV data from input file
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "libcsv/csv.h"
+#include "csv.h"
 
 void cb1 (void *s, size_t i, void *outfile) {
   csv_fwrite((FILE *)outfile, s, i);

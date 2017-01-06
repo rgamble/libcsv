@@ -8,7 +8,7 @@ csvtest - reads CSV data from stdin and output properly formed equivalent
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "libcsv/csv.h"
+#include "csv.h"
 
 static int put_comma;
 
