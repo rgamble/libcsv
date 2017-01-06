@@ -61,25 +61,25 @@ struct csv_parser {
 int csv_init(struct csv_parser *p, unsigned char options);
 int csv_fini(struct csv_parser *p, void (*cb1)(void *, size_t, void *), void (*cb2)(int, void *), void *data);
 void csv_free(struct csv_parser *p);
-int csv_error(struct csv_parser *p);
-char * csv_strerror(int error);
+int csv_error(const struct csv_parser *p);
+const char * csv_strerror(int error);
 size_t csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, size_t, void *), void (*cb2)(int, void *), void *data);
 size_t csv_write(void *dest, size_t dest_size, const void *src, size_t src_size);
 int csv_fwrite(FILE *fp, const void *src, size_t src_size);
 size_t csv_write2(void *dest, size_t dest_size, const void *src, size_t src_size, unsigned char quote);
 int csv_fwrite2(FILE *fp, const void *src, size_t src_size, unsigned char quote);
-int csv_get_opts(struct csv_parser *p);
+int csv_get_opts(const struct csv_parser *p);
 int csv_set_opts(struct csv_parser *p, unsigned char options);
 void csv_set_delim(struct csv_parser *p, unsigned char c);
 void csv_set_quote(struct csv_parser *p, unsigned char c);
-unsigned char csv_get_delim(struct csv_parser *p);
-unsigned char csv_get_quote(struct csv_parser *p);
+unsigned char csv_get_delim(const struct csv_parser *p);
+unsigned char csv_get_quote(const struct csv_parser *p);
 void csv_set_space_func(struct csv_parser *p, int (*f)(unsigned char));
 void csv_set_term_func(struct csv_parser *p, int (*f)(unsigned char));
 void csv_set_realloc_func(struct csv_parser *p, void *(*)(void *, size_t));
 void csv_set_free_func(struct csv_parser *p, void (*)(void *));
 void csv_set_blk_size(struct csv_parser *p, size_t);
-size_t csv_get_buffer_size(struct csv_parser *p);
+size_t csv_get_buffer_size(const struct csv_parser *p);
 
 #ifdef __cplusplus
 }
