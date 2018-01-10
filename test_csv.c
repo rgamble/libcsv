@@ -112,7 +112,7 @@ test_parser (char *test_name, unsigned char options, void *input, size_t len, st
       retval = csv_parse(&p, input + bytes_processed, bytes, cb1, cb2, test_name);
       if (retval != bytes) {
         if (event_ptr->event_type != CSV_ERR) {
-          fail_parser(test_name, "unexpected parse error occured");
+          fail_parser(test_name, "unexpected parse error occurred");
         } else {
           csv_free(&p);
           return;
@@ -125,7 +125,7 @@ test_parser (char *test_name, unsigned char options, void *input, size_t len, st
 
     if (result != 0) {
       if (event_ptr->event_type != CSV_ERR) {
-        fail_parser(test_name, "unexpected parse error occured");
+        fail_parser(test_name, "unexpected parse error occurred");
       } else {
         csv_free(&p);
         return;
