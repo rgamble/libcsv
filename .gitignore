@@ -1,12 +1,24 @@
+*.la
+*.lo
+*.log
+*.o
+*.trs
+.deps
+.libs
+Makefile
 Makefile.in
 
 /aclocal.m4
+/autom4te.cache/
+/check_csv
 /compile
 /config.guess
+/config.status
 /config.sub
 /configure
 /depcomp
 /install-sh
+/libtool
 /ltmain.sh
 /m4/
 /missing
