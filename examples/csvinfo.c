@@ -7,7 +7,7 @@ csvinfo - reads CSV data from input file(s) and reports the number
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#include "csv.h"
+#include <csv.h>
 
 struct counts {
   long unsigned fields;

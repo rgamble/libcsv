@@ -7,7 +7,7 @@ csvvalid - determine if files are properly formed CSV files and display
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "csv.h"
+#include <csv.h>
 
 int
 main (int argc, char *argv[])
