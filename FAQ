@@ -22,7 +22,7 @@ accomplish that:
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include "csv.h"
+#include <csv.h>
 
 int in_comment, in_record;
 
