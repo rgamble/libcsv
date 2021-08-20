@@ -1,9 +1,15 @@
 Installation
 ------------
-installation usually consists of:
-./configure && make && make check && make install
+The libcsv library may be installed using the package management software included
+with many operating systems.  The relevant packages are typically named libcsv3
+and libcsv-dev.  See the documentation of your operating system's package management
+software for details on fetching and installing the appropriate package.
 
-see the INSTALL file for details and instructions on other systems
+Installation from source usually consists of:
+
+    ./configure && make && make check && make install
+
+see the INSTALL file for details and instructions on other systems.
 
 
 License
