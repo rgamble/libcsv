@@ -1,4 +1,4 @@
-.TH CSV 3 "9 January 2013"
+.TH CSV 3 "20 August 2021"
 .SH NAME
 csv \- CSV parser and writer library
 .SH SYNOPSIS
@@ -139,7 +139,7 @@ Multiple options can be specified by OR-ing them together.
 .TP
 \fIcb1\fP is a pointer to the callback function that will be called from \fBcsv_parse()\fP after an entire field has been read. \fIcb1\fP will be called with a pointer to the parsed data (which is NOT nul-terminated unless the CSV_APPEND_NULL option is set), the number of bytes in the data, and the pointer that was passed to \fBcsv_parse()\fP.
 .TP
-\fIcb2\fP is a pointer to the callback function that will be called when the end of a record is encountered, it will be called with the character that caused the record to end, cast to an unsigned char, or -1 if called from csv_fini, and the pointer that was passed to \fBcsv_init()\fP.
+\fIcb2\fP is a pointer to the callback function that will be called when the end of a record is encountered, it will be called with the character that caused the record to end, cast to an unsigned char, or -1 if called from csv_fini, and the pointer that was passed to \fBcsv_parse()\fP.
 .TP
 \fIdata\fP is a pointer to user-defined data that will be passed to the callback functions when invoked.
 .TP
@@ -293,7 +293,7 @@ CUSTOMIZING THE PARSER
 .br
 The \fBcsv_set_delim()\fP and \fBcsv_set_quote()\fP functions provide a
 means to change the characters that the parser will consider the delimiter
-and quote characters respetively, cast to unsigned char.  \fBcsv_get_delim()\fP  and \fBcsv_get_delim()\fP
+and quote characters respetively, cast to unsigned char.  \fBcsv_get_delim()\fP  and \fBcsv_get_quote()\fP
 return the current delimiter and quote characters respectively.  When
 \fBcsv_init()\fP is called the delimiter is set to \fBCSV_COMMA\fP and the quote
 to \fBCSV_QUOTE\fP.  Note that the rest of the CSV conventions still apply
