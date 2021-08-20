@@ -85,7 +85,7 @@ subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) depcomp \
 	$(dist_man_MANS) $(nobase_libcsv_include_HEADERS) test-driver \
-	COPYING COPYING.LESSER ChangeLog INSTALL README compile \
+	COPYING ChangeLog INSTALL README compile \
 	config.guess config.sub install-sh missing ltmain.sh
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -528,7 +528,7 @@ test_csv.c \
 tests \
 examples \
 csv.pdf \
-COPYING.LESSER
+COPYING
 
 check_csv_SOURCES = test_csv.c
 check_csv_LDADD = -lcsv

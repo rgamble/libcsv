@@ -11,7 +11,7 @@ test_csv.c \
 tests \
 examples \
 csv.pdf \
-COPYING.LESSER
+COPYING
 TESTS = check_csv
 check_PROGRAMS = check_csv
 check_csv_SOURCES = test_csv.c
