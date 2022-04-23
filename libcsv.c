@@ -162,14 +162,18 @@ csv_free(struct csv_parser *p)
 int
 csv_fini(struct csv_parser *p, void (*cb1)(void *, size_t, void *), void (*cb2)(int c, void *), void *data)
 {
+  int quoted;
+  int pstate;
+  size_t spaces;
+  size_t entry_pos;
   if (p == NULL)
     return -1;
 
   /* Finalize parsing.  Needed, for example, when file does not end in a newline */
-  int quoted = p->quoted;
-  int pstate = p->pstate;
-  size_t spaces = p->spaces;
-  size_t entry_pos = p->entry_pos;
+  quoted = p->quoted;
+  pstate = p->pstate;
+  spaces = p->spaces;
+  entry_pos = p->entry_pos;
 
   if ((pstate == FIELD_BEGUN) && p->quoted && (p->options & CSV_STRICT) && (p->options & CSV_STRICT_FINI)) {
     /* Current field is quoted, no end-quote was seen, and CSV_STRICT_FINI is set */
@@ -281,6 +285,8 @@ csv_get_buffer_size(const struct csv_parser *p)
 static int
 csv_increase_buffer(struct csv_parser *p)
 {
+  void *vp;
+  size_t to_add;
   if (p == NULL) return 0;
   if (p->realloc_func == NULL) return 0;
   
@@ -290,8 +296,7 @@ csv_increase_buffer(struct csv_parser *p)
    * the size and try again until successful or increment size is zero.
    */
 
-  size_t to_add = p->blk_size;
-  void *vp;
+  to_add = p->blk_size;
 
   if ( p->entry_size >= SIZE_MAX - to_add )
     to_add = SIZE_MAX - p->entry_size;
@@ -318,23 +323,36 @@ csv_increase_buffer(struct csv_parser *p)
 size_t
 csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, size_t, void *), void (*cb2)(int c, void *), void *data)
 {
+  unsigned const char *us; /* Where to story input data as an array of unsigned char */
+  unsigned char c;  /* The character we are currently processing */
+  size_t pos; /* The number of characters we have processed in this call */
+
+  /* Local variables for key fields for performance */
+  unsigned char delim;
+  unsigned char quote;
+  int (*is_space)(unsigned char); /* Function pointers */
+  int (*is_term)(unsigned char);
+  int quoted;
+  int pstate;
+  size_t spaces;
+  size_t entry_pos;
+
   assert(p && "received null csv_parser");
 
   if (s == NULL) return 0;
   
-  unsigned const char *us = s;  /* Access input data as array of unsigned char */
-  unsigned char c;              /* The character we are currently processing */
-  size_t pos = 0;               /* The number of characters we have processed in this call */
+  us = s;  /* Access input data as array of unsigned char */
+  pos = 0;
 
   /* Store key fields into local variables for performance */
-  unsigned char delim = p->delim_char;
-  unsigned char quote = p->quote_char;
-  int (*is_space)(unsigned char) = p->is_space;
-  int (*is_term)(unsigned char) = p->is_term;
-  int quoted = p->quoted;
-  int pstate = p->pstate;
-  size_t spaces = p->spaces;
-  size_t entry_pos = p->entry_pos;
+  delim = p->delim_char;
+  quote = p->quote_char;
+  is_space = p->is_space;
+  is_term = p->is_term;
+  quoted = p->quoted;
+  pstate = p->pstate;
+  spaces = p->spaces;
+  entry_pos = p->entry_pos;
 
 
   if (!p->entry_buf && pos < len) {
