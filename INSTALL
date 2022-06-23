@@ -2,6 +2,7 @@
 
 On systems with make, the installation process consists of:
 
+    autoreconf -fi
     ./configure
     make
     make check
@@ -12,9 +13,6 @@ linking your program to libcsv.
 
 This will install the csv.h header, libcsv shared and static libraries,
 and the csv(3) manual page.  Run ./configure --help for other options.
-
-If you receive an error about files being out of date or automake not installed
-when running make, run the fix-timestamps.sh script and try again.
 
 [Installing on systems without make]
 
