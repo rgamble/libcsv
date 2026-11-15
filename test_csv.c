@@ -143,34 +143,52 @@ void
 test_writer (char * test_name, char *input, size_t input_len, char *expected, size_t expected_len)
 {
   size_t actual_len;
+  char sentinel = '#';
   char *temp = malloc(input_len*2 + 2);
   if (!temp) {
     fprintf(stderr, "Failed to allocate memory in test_writer!\n");
     exit(EXIT_FAILURE);
   }
+
+  if (csv_write(NULL, 0, input, input_len) != expected_len ||
+      csv_write(NULL, input_len*2 + 2, input, input_len) != expected_len ||
+      csv_write(&sentinel, 0, input, input_len) != expected_len)
+    fail_writer(test_name, "size query doesn't match expected length");
+  if (sentinel != '#')
+    fail_writer(test_name, "zero-sized destination was modified");
 
   actual_len = csv_write(temp, input_len*2 + 2, input, input_len);
   if (actual_len != expected_len)
     fail_writer(test_name, "actual length doesn't match expected length");
   if (memcmp(temp, expected, actual_len) != 0)
     fail_writer(test_name, "actual data doesn't match expected data");
+  free(temp);
 }
 
 void
 test_writer2 (char * test_name, char *input, size_t input_len, char *expected, size_t expected_len, char quote)
 {
   size_t actual_len;
+  char sentinel = '#';
   char *temp = malloc(input_len*2 + 2);
   if (!temp) {
     fprintf(stderr, "Failed to allocate memory in test_writer!\n");
     exit(EXIT_FAILURE);
   }
 
+  if (csv_write2(NULL, 0, input, input_len, quote) != expected_len ||
+      csv_write2(NULL, input_len*2 + 2, input, input_len, quote) != expected_len ||
+      csv_write2(&sentinel, 0, input, input_len, quote) != expected_len)
+    fail_writer(test_name, "size query doesn't match expected length");
+  if (sentinel != '#')
+    fail_writer(test_name, "zero-sized destination was modified");
+
   actual_len = csv_write2(temp, input_len*2 + 2, input, input_len, quote);
   if (actual_len != expected_len)
     fail_writer(test_name, "actual length doesn't match expected length");
   if (memcmp(temp, expected, actual_len) != 0)
     fail_writer(test_name, "actual data doesn't match expected data");
+  free(temp);
 }
 
 
@@ -476,6 +494,15 @@ int main (void) {
 
   test_writer2("1", "abc", 3, "'abc'", 5, '\'');
   test_writer2("2", "''''''''", 8, "''''''''''''''''''", 18, '\'');
+
+  test_writer("empty", "", 0, "\"\"", 2);
+  test_writer("binary", "\0\"\377", 3, "\"\0\"\"\377\"", 6);
+  test_writer2("binary custom quote", "\0\377\377a", 4,
+               "\377\0\377\377\377\377a\377", 8, (char)0xff);
+
+  if (csv_write(NULL, 0, NULL, 123) != 0 ||
+      csv_write2(NULL, 0, NULL, 123, 0xff) != 0)
+    fail_writer("null source", "null source should return zero");
 
   puts("All tests passed");
   return 0;
