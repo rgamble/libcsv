@@ -491,6 +491,16 @@ csv_write2 (void *dest, size_t dest_size, const void *src, size_t src_size, unsi
   if (dest == NULL)
     dest_size = 0;
 
+  if (dest_size == 0) {
+    /* Count quotes independently; a sizing query never needs output stores. */
+    size_t i, extra = 0;
+    for (i = 0; i < src_size; ++i)
+      extra += csrc[i] == quote;
+    if (src_size > SIZE_MAX - 2 || extra > SIZE_MAX - 2 - src_size)
+      return SIZE_MAX;
+    return src_size + extra + 2;
+  }
+
   if (dest_size > 0)
     *cdest++ = quote;
   chars++;
